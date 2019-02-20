@@ -40,26 +40,12 @@ build_aport() {
 }
 
 changed_repos() {
-	local repo= range="$1"
 	cd "$APORTSDIR"
 	for repo in $REPOS; do
 		git diff --exit-code remotes/origin/$DRONE_COMMIT_BRANCH -- $repo >/dev/null \
 			|| echo "$repo"
 	done
 }
-
-get_commit_range() {
-	local pr=$DRONE_PULL_REQUEST
-	local repo=$DRONE_REPO
-	local token=$GH_TOKEN
-	local json=$(set +x; curl -H "Authorization: token $token" \
-		-fsL https://api.github.com/repos/$repo/pulls/$pr)
-	[ "$?" != 0 ] && die "Failed to fetch PR data"
-	local base_sha=$(echo "$json" | jq -r .base.sha)
-	local head_sha=$(echo "$json" | jq -r .head.sha)
-	printf "%s..%s\n" "$base_sha" "$head_sha"
-}
-
 
 set_repositories_for() {
 	local target_repo="$1" repos= repo=
@@ -74,7 +60,7 @@ set_repositories_for() {
 
 changed_aports() {
 	cd "$APORTSDIR"
-	local repo="$1" range="$2"
+	local repo="$1"
 	local aports=$(git diff --name-only --diff-filter=ACMR --relative="$repo" \
 		remotes/origin/$DRONE_COMMIT_BRANCH -- "*/APKBUILD" | xargs -I% dirname %)
 	ap builddirs -d "$APORTSDIR/$repo" $aports 2>/dev/null | xargs -I% basename % | xargs
@@ -101,11 +87,9 @@ aport_ng=
 sysinfo || true
 setup_system
 
-commit_range=$(get_commit_range)
-
-for repo in $(changed_repos "$commit_range"); do
+for repo in $(changed_repos); do
 	set_repositories_for "$repo"
-	for pkgname in $(changed_aports "$repo" "$commit_range"); do
+	for pkgname in $(changed_aports "$repo"); do
 		if build_aport "$repo" "$pkgname"; then
 			checkapk || true
 			aport_ok="$aport_ok $repo/$pkgname"

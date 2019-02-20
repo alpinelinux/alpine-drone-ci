@@ -6,7 +6,7 @@ release=${1:-edge}
 echo "http://dl-cdn.alpinelinux.org/alpine/$release/main" > /etc/apk/repositories
 
 apk -U upgrade -a
-apk add alpine-sdk lua-aports curl jq pigz
+apk add alpine-sdk lua-aports pigz
 rm -rf /var/cache/apk/*
 
 # use buildozer for building

@@ -43,7 +43,7 @@ changed_repos() {
 	local repo= range="$1"
 	cd "$APORTSDIR"
 	for repo in $REPOS; do
-		git diff --exit-code $range -- $repo >/dev/null \
+		git diff --exit-code remotes/origin/$DRONE_COMMIT_BRANCH -- $repo >/dev/null \
 			|| echo "$repo"
 	done
 }
@@ -76,7 +76,7 @@ changed_aports() {
 	cd "$APORTSDIR"
 	local repo="$1" range="$2"
 	local aports=$(git diff --name-only --diff-filter=ACMR --relative="$repo" \
-		$range -- "*/APKBUILD" | xargs -I% dirname %)
+		remotes/origin/$DRONE_COMMIT_BRANCH -- "*/APKBUILD" | xargs -I% dirname %)
 	ap builddirs -d "$APORTSDIR/$repo" $aports 2>/dev/null | xargs -I% basename % | xargs
 }
 

@@ -108,6 +108,6 @@ done
 if [ -n "$aport_ng" ]; then
 	die "Failed to build packages:$aport_ng"
 elif [ -z "$aport_ok" ]; then
-	die "No packages found to be built."
+	msg "No packages found to be built." yellow
 fi
 

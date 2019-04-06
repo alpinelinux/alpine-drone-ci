@@ -1,7 +1,6 @@
 FROM amd64/alpine:3.9
 
-COPY scripts/*.sh /usr/local/bin/
-COPY files/etc/ /etc/
+OPY files/ /
 
 RUN ["setup.sh", "v3.9" ]
 

@@ -1,7 +1,6 @@
 FROM arm64v8/alpine:latest
 
-COPY scripts/*.sh /usr/local/bin/
-COPY files/etc/ /etc/
+COPY files/ /
 
 RUN ["setup.sh", "edge" ]
 

@@ -1,7 +1,6 @@
 FROM i386/alpine:3.9
 
-COPY scripts/*.sh /usr/local/bin/
-COPY files/etc/ /etc/
+COPY files/ /
 
 RUN ["setup.sh", "v3.9" ]
 

@@ -2,9 +2,11 @@
 
 set -eu
 
-readonly APORTSDIR=$HOME/drone/aports
+readonly APORTSDIR=$HOME/aports
+readonly REPODEST=$HOME/packages
 readonly REPOS="main community testing"
 readonly MIRROR=http://dl-cdn.alpinelinux.org/alpine
+readonly REPOURL=https://github.com/alpinelinux/aports
 
 msg() {
 	local color=${2:-green}
@@ -35,7 +37,6 @@ get_release() {
 build_aport() {
 	local repo="$1" aport="$2"
 	cd "$APORTSDIR/$repo/$aport"
-	sudo chown buildozer .
 	abuild -r
 }
 
@@ -71,8 +72,15 @@ setup_system() {
 	sudo apk -U upgrade -a || apk fix || die "Failed to up/downgrade system"
 	abuild-keygen -ain
 	sudo sed -i 's/JOBS=[0-9]*/JOBS=$(nproc)/' /etc/abuild.conf
-	sudo install -do buildozer "$HOME"/drone/packages
+	mkdir -p "$REPODEST"
 }
+
+create_workspace() {
+	msg "Cloning aports and applying PR$DRONE_PULL_REQUEST"
+	git clone --depth=1 --branch $DRONE_COMMIT_BRANCH $REPOURL $APORTSDIR
+	wget -qO- $REPOURL/pull/$DRONE_PULL_REQUEST.patch | git -C $APORTSDIR am
+}
+
 
 sysinfo() {
 	printf ">>> Host system information (arch: %s, release: %s) <<<\n" "$(apk --print-arch)" "$(get_release)"
@@ -85,7 +93,8 @@ aport_ok=
 aport_ng=
 
 sysinfo || true
-setup_system
+setup_system || die "Failed to setup system"
+create_workspace || die "Failed to create workspace"
 
 for repo in $(changed_repos); do
 	set_repositories_for "$repo"

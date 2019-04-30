@@ -52,6 +52,7 @@ set_repositories_for() {
 	local target_repo="$1" repos= repo=
 	local release=$(get_release)
 	for repo in $REPOS; do
+		[ "$repo" = "non-free" ] && continue
 		repos="$repos $MIRROR/$release/$repo"
 		[ "$repo" = "$target_repo" ] && break
 	done

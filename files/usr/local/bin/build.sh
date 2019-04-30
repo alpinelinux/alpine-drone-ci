@@ -4,7 +4,7 @@ set -eu
 
 readonly APORTSDIR=$HOME/aports
 readonly REPODEST=$HOME/packages
-readonly REPOS="main community testing"
+readonly REPOS="main community testing non-free"
 readonly MIRROR=http://dl-cdn.alpinelinux.org/alpine
 readonly REPOURL=https://github.com/alpinelinux/aports
 

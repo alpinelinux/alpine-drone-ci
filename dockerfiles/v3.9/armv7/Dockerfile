@@ -1,6 +1,6 @@
 FROM arm32v6/alpine:3.9
 
-COPY files/ /
+COPY overlay/ /
 
 # hack to force system to upgrade to armv7
 COPY dockerfiles/v3.9/armv7/arch /etc/apk/

@@ -1,6 +1,6 @@
 FROM amd64/alpine:latest
 
-COPY files/ /
+COPY overlay/ /
 
 RUN ["setup.sh", "edge" ]
 

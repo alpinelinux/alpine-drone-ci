@@ -1,6 +1,6 @@
 FROM arm32v6/alpine:latest
 
-COPY files/ /
+COPY overlay/ /
 
 RUN ["setup.sh", "edge" ]
 

@@ -1,6 +1,6 @@
 FROM arm64v8/alpine:3.9
 
-COPY files/ /
+COPY overlay/ /
 
 RUN ["setup.sh", "v3.9" ]
 

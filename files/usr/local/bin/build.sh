@@ -7,6 +7,10 @@ readonly REPODEST=$HOME/packages
 readonly REPOS="main community testing non-free"
 readonly MIRROR=http://dl-cdn.alpinelinux.org/alpine
 readonly REPOURL=https://github.com/alpinelinux/aports
+readonly ARCH=$(apk --print-arch)
+# Drone variables
+readonly BRANCH=$DRONE_COMMIT_BRANCH
+readonly PR=$DRONE_PULL_REQUEST
 
 msg() {
 	local color=${2:-green}
@@ -26,24 +30,37 @@ die() {
 }
 
 get_release() {
-	local branch=$DRONE_COMMIT_BRANCH
-	case $branch in
-		*-stable) echo v${branch%-*};;
+	case $BRANCH in
+		*-stable) echo v${BRANCH%-*};;
 		master) echo edge;;
-		*) die "Branch \"$branch\" not supported!"
+		*) die "Branch \"$BRANCH\" not supported!"
 	esac
 }
 
 build_aport() {
 	local repo="$1" aport="$2"
 	cd "$APORTSDIR/$repo/$aport"
-	abuild -r
+	if abuild -r; then
+		checkapk || true
+		aport_ok="$aport_ok $repo/$aport"
+	else
+		aport_ng="$aport_ng $repo/$aport"
+	fi
+}
+
+check_aport() {
+	local repo="$1" aport="$2"
+	cd "$APORTSDIR/$repo/$aport"
+	if ! abuild check_arch 2>/dev/null; then
+		aport_na="$aport_na $repo/$aport"
+		return 1
+	fi
 }
 
 changed_repos() {
 	cd "$APORTSDIR"
 	for repo in $REPOS; do
-		git diff --exit-code remotes/origin/$DRONE_COMMIT_BRANCH -- $repo >/dev/null \
+		git diff --exit-code remotes/origin/$BRANCH -- $repo >/dev/null \
 			|| echo "$repo"
 	done
 }
@@ -64,7 +81,7 @@ changed_aports() {
 	cd "$APORTSDIR"
 	local repo="$1"
 	local aports=$(git diff --name-only --diff-filter=ACMR --relative="$repo" \
-		remotes/origin/$DRONE_COMMIT_BRANCH -- "*/APKBUILD" | xargs -I% dirname %)
+		remotes/origin/$BRANCH -- "*/APKBUILD" | xargs -I% dirname %)
 	ap builddirs -d "$APORTSDIR/$repo" $aports 2>/dev/null | xargs -I% basename % | xargs
 }
 
@@ -77,21 +94,22 @@ setup_system() {
 }
 
 create_workspace() {
-	msg "Cloning aports and applying PR$DRONE_PULL_REQUEST"
-	git clone --depth=1 --branch $DRONE_COMMIT_BRANCH $REPOURL $APORTSDIR
-	wget -qO- $REPOURL/pull/$DRONE_PULL_REQUEST.patch | git -C $APORTSDIR am
+	msg "Cloning aports and applying PR$PR"
+	git clone --depth=1 --branch $BRANCH $REPOURL $APORTSDIR
+	wget -qO- $REPOURL/pull/$PR.patch | git -C $APORTSDIR am
 }
 
-
 sysinfo() {
-	printf ">>> Host system information (arch: %s, release: %s) <<<\n" "$(apk --print-arch)" "$(get_release)"
+	printf ">>> Host system information (arch: %s, release: %s) <<<\n" "$ARCH" "$(get_release)"
 	printf "- Number of Cores: %s\n" $(nproc)
 	printf "- Memory: %s Gb\n" $(awk '/^MemTotal/ {print ($2/1024/1024)}' /proc/meminfo)
 	printf "- Free space: %s\n" $(df -hP / | awk '/\/$/ {print $4}')
 }
 
 aport_ok=
+aport_na=
 aport_ng=
+failed=
 
 sysinfo || true
 setup_system || die "Failed to setup system"
@@ -100,11 +118,8 @@ create_workspace || die "Failed to create workspace"
 for repo in $(changed_repos); do
 	set_repositories_for "$repo"
 	for pkgname in $(changed_aports "$repo"); do
-		if build_aport "$repo" "$pkgname"; then
-			checkapk || true
-			aport_ok="$aport_ok $repo/$pkgname"
-		else
-			aport_ng="$aport_ng $repo/$pkgname"
+		if check_aport "$repo" "$pkgname"; then
+			build_aport "$repo" "$pkgname"
 		fi
 	done
 done
@@ -115,8 +130,17 @@ for ok in $aport_ok; do
 	msg "$ok: build succesfully"
 done
 
-if [ -n "$aport_ng" ]; then
-	die "Failed to build packages:$aport_ng"
+for na in $aport_na; do
+	msg "$na: disabled for $ARCH" yellow
+done
+
+for ng in $aport_ng; do
+	msg "$ng: build failed" red
+	failed=true
+done
+
+if [ "$failed" = true ]; then
+	exit 1
 elif [ -z "$aport_ok" ]; then
 	msg "No packages found to be built." yellow
 fi

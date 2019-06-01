@@ -104,6 +104,7 @@ sysinfo() {
 	printf "- Number of Cores: %s\n" $(nproc)
 	printf "- Memory: %s Gb\n" $(awk '/^MemTotal/ {print ($2/1024/1024)}' /proc/meminfo)
 	printf "- Free space: %s\n" $(df -hP / | awk '/\/$/ {print $4}')
+	uname -a
 }
 
 aport_ok=

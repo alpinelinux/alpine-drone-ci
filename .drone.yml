@@ -127,6 +127,12 @@ platform:
   arch: arm
 
 steps:
+  - name: qemu
+    image: multiarch/qemu-user-static:register
+    pull: true
+    privileged: true
+    commands:
+      - --credential yes --reset
   - name: publish
     image: plugins/docker
     settings:
